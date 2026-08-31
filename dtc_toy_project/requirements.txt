@@ -1,0 +1,13 @@
+torch
+transformers
+peft
+accelerate
+scikit-learn
+numpy
+pandas
+ijson
+pulp
+
+# bitsandbytes is CUDA-only (4-bit/8-bit quantization) and not usable on Apple Silicon/MPS
+# or CPU-only setups. Only install this if you're on an NVIDIA GPU and want quantization:
+# pip install bitsandbytes
