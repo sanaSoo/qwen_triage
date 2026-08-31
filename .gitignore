@@ -216,3 +216,5 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+dtc_toy_project/data/all_cases_old.json
+dtc_toy_project/data/all_cases.json
