@@ -9,10 +9,10 @@ from .config import (
     DATA_FILE, OUTPUTS_DIR, LSI_KEYS, TASK1_OUTPUT_KEYS,
     MAX_SEQ_LEN, BATCH_SIZE, LEARNING_RATE, NUM_EPOCHS,
 )
+from .data_common import load_cases
 from .data_task1 import (
     load_run1_examples, serialize_predict, existence_labels, stratified_split,
 )
-from .data_common import load_cases
 from .model import build_model_and_tokenizer
 from .metrics import existence_score
 
@@ -57,10 +57,13 @@ def main():
     optimizer = torch.optim.AdamW(classifier.parameters(), lr=LEARNING_RATE)
     criterion = nn.BCELoss()
 
+    print(f"Starting training: {len(train_loader)} batches/epoch, {NUM_EPOCHS} epochs")
+    OUTPUTS_DIR.mkdir(exist_ok=True)
+
     for epoch in range(NUM_EPOCHS):
         classifier.train()
         total_loss = 0.0
-        for input_ids, attn_mask, y in train_loader:
+        for batch_idx, (input_ids, attn_mask, y) in enumerate(train_loader):
             input_ids, attn_mask, y = input_ids.to(device), attn_mask.to(device), y.to(device)
             optimizer.zero_grad()
             preds = classifier(input_ids, attn_mask)
@@ -68,7 +71,18 @@ def main():
             loss.backward()
             optimizer.step()
             total_loss += loss.item()
-        print(f"Epoch {epoch+1}/{NUM_EPOCHS} — train loss: {total_loss / len(train_loader):.4f}")
+            if (batch_idx + 1) % 10 == 0 or (batch_idx + 1) == len(train_loader):
+                print(f"  epoch {epoch+1} batch {batch_idx+1}/{len(train_loader)} "
+                      f"loss={loss.item():.4f}", flush=True)
+        print(f"Epoch {epoch+1}/{NUM_EPOCHS} — train loss: {total_loss / len(train_loader):.4f}",
+              flush=True)
+
+        # Safety checkpoint after every epoch -- if the run gets interrupted overnight
+        # (crash, power loss, OS reclaiming memory), you still have a usable adapter
+        # from whichever epoch last completed, instead of losing the whole run.
+        checkpoint_dir = OUTPUTS_DIR / f"task1_lora_adapter_epoch{epoch+1}"
+        classifier.base.save_pretrained(checkpoint_dir)
+        print(f"  Saved checkpoint: {checkpoint_dir}", flush=True)
 
     # --- Evaluate on held-out split using the real Existence Score ---
     classifier.eval()
@@ -93,8 +107,8 @@ def main():
     print("Compare this against src/baseline.py's output.")
 
     OUTPUTS_DIR.mkdir(exist_ok=True)
-    classifier.base.save_pretrained(OUTPUTS_DIR / "task1_lora_adapter")
-    print(f"\nSaved LoRA adapter to {OUTPUTS_DIR / 'task1_lora_adapter'}")
+    classifier.base.save_pretrained(OUTPUTS_DIR / "task1_lora_adapter_final")
+    print(f"\nSaved final LoRA adapter to {OUTPUTS_DIR / 'task1_lora_adapter_final'}")
 
 
 if __name__ == "__main__":
