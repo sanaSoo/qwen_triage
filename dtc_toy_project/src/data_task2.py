@@ -16,8 +16,17 @@ import random
 from .config import LSI_KEYS, VITALS_WINDOW_SEGMENTS, VAL_FRACTION, RANDOM_SEED
 
 
-def load_task2_examples(cases, vitals_window_segments=VITALS_WINDOW_SEGMENTS):
-    """cases: list of case dicts, as returned by data_common.load_cases()."""
+def load_task2_examples(cases, vitals_window_segments=VITALS_WINDOW_SEGMENTS, segment_stride=1):
+    """
+    cases: list of case dicts, as returned by data_common.load_cases().
+    segment_stride: only every Nth segment becomes a training example (e.g., stride=5
+        keeps 1 in 5). The running state (casualty report, prior interventions, vitals
+        trend history) is still updated on EVERY segment regardless of stride, so
+        skipped segments don't break context accuracy for the segments that ARE kept.
+        Segments with at least one positive LSI label are always kept regardless of
+        stride, so subsampling can't accidentally thin out rare positive examples --
+        only the (far more common) all-negative segments get reduced.
+    """
     examples = []
     for case in cases:
         segs = case["task2_segments"]
@@ -25,7 +34,7 @@ def load_task2_examples(cases, vitals_window_segments=VITALS_WINDOW_SEGMENTS):
         casualty_desc = None
         prior_interventions = []
 
-        for seg in segs:
+        for seg_idx, seg in enumerate(segs):
             p = seg["predict"]
             cr = p.get("casualty_report") or {}
             ehr = p.get("ehr") or {}
@@ -45,6 +54,10 @@ def load_task2_examples(cases, vitals_window_segments=VITALS_WINDOW_SEGMENTS):
                 })
             if vitals_window_segments:
                 history_trends = history_trends[-vitals_window_segments:]
+
+            has_positive = any(v > 0 for v in seg["response"]["lsi_predictions"].values())
+            if segment_stride > 1 and (seg_idx % segment_stride != 0) and not has_positive:
+                continue  # skip this all-negative segment as a training example
 
             examples.append({
                 "case_id": case["case_id"],

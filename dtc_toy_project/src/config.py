@@ -40,4 +40,5 @@ LORA_TARGET_MODULES = ["q_proj", "v_proj"]
 
 # --- Task 2 ---
 VITALS_WINDOW_SEGMENTS = 10  # how many recent vitals segments to keep in running state
+SEGMENT_STRIDE = 5  # only 1 in N all-negative segments becomes a training example
 TASK2_TIME_STRATA_SEC = [(0, 1800), (1800, 3600), (3600, 7200), (7200, 14400)]
