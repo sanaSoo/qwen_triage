@@ -11,7 +11,7 @@ cannot guarantee.
 from .config import DATA_FILE
 from .data_common import load_cases
 from .data_task3 import load_task3_scenarios
-from .metrics import task3_eval
+from .metrics import task3_eval, task3_trivial_baselines
 
 
 def severity_score(patient_message):
@@ -79,9 +79,13 @@ def main():
     for sid, scenario in scenarios.items():
         allocation = allocate_resources(sid, scenario["patients"], scenario["resources"])
         result = task3_eval(scenario, allocation)
-        print(f"{sid} — patients: {len(scenario['patients'])}, "
-              f"evac_accuracy: {result['evac_accuracy']}, "
-              f"mean_resource_jaccard: {result['mean_resource_jaccard']}")
+        baseline = task3_trivial_baselines(scenario)
+        print(f"\n{sid} — patients: {len(scenario['patients'])}, "
+              f"evac_rate={baseline['evac_rate']:.3f}")
+        print(f"  evac_accuracy:       {result['evac_accuracy']:.4f}   "
+              f"(majority-class baseline: {baseline['evac_majority_baseline']:.4f})")
+        print(f"  mean_resource_jaccard: {result['mean_resource_jaccard']:.4f}   "
+              f"(predict-nothing baseline: {baseline['resource_empty_baseline']:.4f})")
 
 
 if __name__ == "__main__":

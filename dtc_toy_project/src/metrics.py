@@ -94,3 +94,38 @@ def task3_eval(scenario, allocations):
             sum(resource_jaccard) / len(resource_jaccard) if resource_jaccard else None
         ),
     }
+
+def task3_trivial_baselines(scenario):
+    """
+    Reference points for interpreting task3_eval's numbers -- neither evac_accuracy nor
+    mean_resource_jaccard has a built-in "how good is this really" floor the way
+    normalized AP does (Task 1/2), so a score like 0.34 is meaningless without knowing
+    what a trivial, uninformed allocator would score on the same scenario.
+
+    evac_majority_baseline: accuracy of always predicting whichever outcome (evacuated
+        vs not) is more common in this scenario's ground truth. A real allocator scoring
+        BELOW this has learned less than just guessing the majority class every time.
+
+    resource_empty_baseline: mean Jaccard of always predicting "no resources assigned"
+        for every patient. Jaccard counts an empty/empty match as 1.0, so this baseline
+        equals the fraction of patients who genuinely received nothing in ground truth --
+        a real allocator scoring below this is doing worse than assigning nothing at all.
+    """
+    gt = scenario["ground_truth"]
+    n = len(gt)
+    if n == 0:
+        return {"evac_majority_baseline": None, "resource_empty_baseline": None}
+
+    evac_flags = [v["evacuated"] for v in gt.values()]
+    evac_rate = sum(evac_flags) / n
+    evac_majority_baseline = max(evac_rate, 1 - evac_rate)
+
+    empty_correct = sum(1 for v in gt.values() if len(v["assignments"]) == 0
+                         or all(len(a.get("resources", [])) == 0 for a in v["assignments"]))
+    resource_empty_baseline = empty_correct / n
+
+    return {
+        "evac_majority_baseline": evac_majority_baseline,
+        "resource_empty_baseline": resource_empty_baseline,
+        "evac_rate": evac_rate,  # useful context: what fraction actually got evacuated
+    }
