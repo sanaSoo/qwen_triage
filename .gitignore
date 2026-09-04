@@ -221,3 +221,15 @@ __marimo__/
 .streamlit/secrets.toml
 dtc_toy_project/data/all_cases_old.json
 dtc_toy_project/data/all_cases.json
+dtc_toy_project/outputs/task1_lora_adapter_epoch1/adapter_config.json
+dtc_toy_project/outputs/task1_lora_adapter_epoch1/adapter_model.safetensors
+dtc_toy_project/outputs/task1_lora_adapter_epoch1/README.md
+dtc_toy_project/outputs/task1_lora_adapter_epoch2/adapter_model.safetensors
+dtc_toy_project/outputs/task1_lora_adapter_epoch2/README.md
+dtc_toy_project/outputs/task1_lora_adapter_epoch3/adapter_config.json
+dtc_toy_project/outputs/task1_lora_adapter_epoch3/README.md
+dtc_toy_project/outputs/task1_lora_adapter_final/adapter_config.json
+dtc_toy_project/outputs/task1_lora_adapter_final/adapter_model.safetensors
+dtc_toy_project/src/train_task1_multirun.py
+dtc_toy_project/outputs/task1_lora_adapter_epoch3/adapter_model.safetensors
+dtc_toy_project/outputs/task1_lora_adapter_epoch2/adapter_config.json
