@@ -6,12 +6,32 @@ hard constraints (Section 3.4.2 -- exact resource caps, hospital_bed required fo
 other resource, no duplicate resource per patient, blood_high/blood_low mutually
 exclusive) are satisfied by construction here, which an LLM emitting free-text JSON
 cannot guarantee.
+
+REVISED based on diagnose_task3_resources.py findings against real ground truth:
+
+1. hospital_bed's stated cap is NOT a literal ceiling -- actual assignments exceeded it
+   by 2.8x-4.8x in every resource-scarce scenario checked. It DOES loosely scale with
+   how many patients receive care, just not 1:1. HOSPITAL_BED_CAP_MULTIPLIER below is a
+   rough calibration from only 3 usable scenarios (observed ratios: 2.82x, 4.76x,
+   3.47x) -- a first-pass estimate, likely to need recalibration with more data.
+
+2. Evacuation could NOT be explained by hospital_bed exhaustion, the "evacuation"
+   resource count, or this severity_score heuristic -- average severity_score for
+   evacuated patients was EQUAL TO OR LOWER than non-evacuated patients in every
+   scenario checked. Whatever drives real evacuation isn't captured by these six
+   features, and forcing an "evacuate the most severe" rule would be actively wrong
+   here, not just unhelpful. Since evacuation is also rare (0-10% per scenario),
+   predicting "nobody evacuated" matches or beats the majority-class baseline in every
+   scenario tested -- so that's what this allocator does now, rather than pretending to
+   have a real evacuation policy it doesn't have evidence for.
 """
 
 from .config import DATA_FILE
 from .data_common import load_cases
 from .data_task3 import load_task3_scenarios
 from .metrics import task3_eval, task3_trivial_baselines
+
+HOSPITAL_BED_CAP_MULTIPLIER = 3.5  # rough calibration, see module docstring above
 
 
 def severity_score(patient_message):
@@ -34,20 +54,23 @@ def severity_score(patient_message):
 
 
 def allocate_resources(scenario_id, patients, resources):
-    ranked = sorted(patients, key=lambda p: -severity_score(p))
+    scored = [(p, severity_score(p)) for p in patients]
+    scored.sort(key=lambda x: -x[1])  # highest severity first
+
+    n = len(scored)
+    bed_cap = resources.get("hospital_bed", 0)
+    n_get_care = min(n, round(bed_cap * HOSPITAL_BED_CAP_MULTIPLIER))
+
     remaining = dict(resources)
-    evacuated, assignments = [], []
+    assignments = []
 
-    for p in ranked:
+    for i, (p, sev) in enumerate(scored):
         pid = p["patient_id"]
-        sev = severity_score(p)
-        res_list = []
 
-        if remaining.get("hospital_bed", 0) <= 0:
-            evacuated.append(pid)
+        if i >= n_get_care:
             continue
-        res_list.append("hospital_bed")
-        remaining["hospital_bed"] -= 1
+
+        res_list = ["hospital_bed"]
 
         cr = p.get("casualty_report") or {}
         if cr.get("severe_hemorrhage") and remaining.get("blood", 0) > 0:
@@ -64,7 +87,7 @@ def allocate_resources(scenario_id, patients, resources):
 
     return {
         "case_id": scenario_id,
-        "evacuated_patients": evacuated,
+        "evacuated_patients": [],
         "resource_assignments": assignments,
     }
 
@@ -77,6 +100,8 @@ def main():
     print("incomplete -- only trust results for scenarios where every patient is present.\n")
 
     for sid, scenario in scenarios.items():
+        print(f"{sid} raw resources dict: {scenario['resources']}, "
+              f"patient count: {len(scenario['patients'])}")
         allocation = allocate_resources(sid, scenario["patients"], scenario["resources"])
         result = task3_eval(scenario, allocation)
         baseline = task3_trivial_baselines(scenario)

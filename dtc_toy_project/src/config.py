@@ -28,7 +28,7 @@ TASK2_OUTPUT_KEYS = LSI_KEYS
 # --- Training ---
 BATCH_SIZE = 4
 LEARNING_RATE = 2e-4
-NUM_EPOCHS = 3
+NUM_EPOCHS = 1
 VAL_FRACTION = 0.1 # adjust if we increase number of samples (10 case threshold per LSI)
 RANDOM_SEED = 0
 
