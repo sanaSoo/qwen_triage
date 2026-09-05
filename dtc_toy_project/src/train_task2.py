@@ -72,6 +72,10 @@ def main():
             if (batch_idx + 1) % 25 == 0 or (batch_idx + 1) == len(train_loader):
                 print(f"  epoch {epoch+1} batch {batch_idx+1}/{len(train_loader)} "
                       f"loss={loss.item():.4f}", flush=True)
+            if (batch_idx + 1) % 500 == 0:
+                mid_ckpt = OUTPUTS_DIR / f"task2_lora_adapter_epoch{epoch+1}_step{batch_idx+1}"
+                classifier.base.save_pretrained(mid_ckpt)
+                print(f"  Mid-epoch checkpoint saved: {mid_ckpt}", flush=True)
         print(f"Epoch {epoch+1}/{NUM_EPOCHS} — train loss: {total_loss / len(train_loader):.4f}",
               flush=True)
 
